@@ -130,7 +130,7 @@ def predict(data: WaterData):
     if risk_score < 30:
         risk_level = "Low"
     elif risk_score < 70:
-        risk_level = "Medium"
+        risk_level = "Medium."
     else:
         risk_level = "High"
 

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WaterGuard Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- 🔥 Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+
+<body>
+
+<h1 style="text-align:center;">💧 Live Water Dashboard</h1>
+
+<!-- 🔥 ROLE DISPLAY -->
+<h3 id="roleDisplay" style="text-align:center; margin-bottom:10px;"></h3>
+
+<div class="dashboard">
+
+    <div class="card">
+
+        <div class="status-section">
+            <h2 id="status">Loading...</h2>
+            <div class="pulse" id="pulse"></div>
+        </div>
+
+        <p id="location">📍 --</p>
+
+        <div class="grid">
+            <div class="box">
+                <p>Confidence</p>
+                <h3 id="confidence">--</h3>
+            </div>
+
+            <div class="box">
+                <p>Risk</p>
+                <h3 id="risk">--</h3>
+            </div>
+        </div>
+
+        <p id="alert">Alert: --</p>
+
+    </div>
+
+</div>
+
+<!-- 🔥 ALERT HISTORY (NEW) -->
+<div class="card" id="historyCard" style="margin: 20px; display: none;">
+    <h3>📜 Alert History</h3>
+    <ul id="alertHistory" style="margin-top:10px;"></ul>
+</div>
+
+<!-- 🔥 MAP SECTION -->
+<div id="map" style="height: 400px; margin: 20px;"></div>
+
+<!-- 🔥 Leaflet Map JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- Existing Script -->
+<script src="script.js"></script>
+
+</body>
+</html>

@@ -1,54 +1,61 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import joblib
 import numpy as np
+import pandas as pd
 
 app = FastAPI()
 
-history = []  # stores last readings
+# ✅ CORS (for frontend)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Load model and scaler
+history = []
+latest_data = None  # 🔥 store latest result for frontend
+
+# Load model
 model = joblib.load("waterguard/model/waterguard_model.pkl")
 scaler = joblib.load("waterguard/model/scaler.pkl")
 
 print("Scaler expects:", scaler.n_features_in_)
 
-# Input structure
+
+# ✅ INPUT MODEL
 class WaterData(BaseModel):
     ph: float
     turbidity: float
     temperature: float
-    dissolved_oxygen: float
-    conductivity: float
-    hardness: float
+    solids: float
+    latitude: float
+    longitude: float
+
 
 @app.get("/")
 def home():
     return {"message": "WaterGuard Backend Running 🚀"}
 
+
+# 🔥 PREDICTION API
 @app.post("/predict")
 def predict(data: WaterData):
 
-    global history
+    global history, latest_data   # 🔥 ADD latest_data HERE
 
-    # Convert input
-    input_data = np.array([[
-        data.ph,
-        data.turbidity,
-        data.temperature,
-        data.dissolved_oxygen,
-        data.conductivity,
-        data.hardness
-    ]])
+    # Prepare ML input
+    input_df = pd.DataFrame([[data.ph, data.solids, data.turbidity]],
+                            columns=['ph', 'Solids', 'Turbidity'])
 
-    # Scale
-    input_scaled = scaler.transform(input_data)
+    input_scaled = scaler.transform(input_df)
 
-    # Prediction
     prediction = model.predict(input_scaled)[0]
-
-    # Confidence
-    confidence = max(model.predict_proba(input_scaled)[0]) * 100
+    proba = model.predict_proba(input_scaled)[0]
+    confidence = max(proba) * 100
 
     # Store history
     history.append(data.model_dump())
@@ -58,7 +65,7 @@ def predict(data: WaterData):
     # 🔥 TIME-BASED LOGIC
     alert = "Normal"
 
-    if len(history) >= 3:
+    if len(history) >= 2:
         last = history[-1]
         prev = history[-2]
 
@@ -66,56 +73,42 @@ def predict(data: WaterData):
             alert = "Warning: pH dropping"
 
         if last["turbidity"] > prev["turbidity"] + 2:
-            alert = "Danger: Sudden turbidity spike"
+            alert = "Danger: Turbidity spike"
 
-        if last["dissolved_oxygen"] < 4:
-            alert = "Danger: Low oxygen level"
+        if last["temperature"] > 40:
+            alert = "Warning: High temperature"
 
-        if (
-            last["ph"] < 6 and
-            last["turbidity"] > 5 and
-            last["dissolved_oxygen"] < 4
-        ):
-            alert = "CRITICAL: Water highly contaminated"
+        if abs(last["temperature"] - prev["temperature"]) > 5:
+            alert = "Warning: Sudden temperature change"
 
-    # Final status (ML)
-    if prediction == 0:
+        if last["ph"] < 6 and last["turbidity"] > 5:
+            alert = "CRITICAL: Water contaminated"
+
+    # ML Result
+    if prediction == 1:
         status = "Safe"
-    elif prediction == 1:
-        status = "Warning"
     else:
-        status = "Danger"
+        if confidence < 70:
+            status = "Warning"
+        else:
+            status = "Unsafe"
 
-    # 🔥 HYBRID DECISION (ML + Rules + Confidence)
+    # Hybrid decision
     final_status = status
 
     if "CRITICAL" in alert:
         final_status = "Danger"
 
-    elif "Danger" in alert:
-        if confidence < 80:
-            final_status = "Danger"
+    elif "Danger" in alert and confidence < 80:
+        final_status = "Danger"
 
-    elif "Warning" in alert:
-        if confidence < 70:
-            final_status = "Warning"
+    elif "Warning" in alert and confidence < 70:
+        final_status = "Warning"
 
-    # 🔥 RISK SCORE SYSTEM (0–100)
-
-    risk_score = 0
-
-    # Base from model
-    if status == "Safe":
-        risk_score += 20
-    elif status == "Warning":
-        risk_score += 50
-    else:
-        risk_score += 80
-
-    # Confidence effect
+    # Risk score
+    risk_score = 20 if status == "Safe" else 70
     risk_score += (100 - confidence) * 0.3
 
-    # Alert effect
     if "CRITICAL" in alert:
         risk_score += 30
     elif "Danger" in alert:
@@ -123,24 +116,32 @@ def predict(data: WaterData):
     elif "Warning" in alert:
         risk_score += 10
 
-    # Clamp
     risk_score = min(100, round(risk_score, 2))
 
-    # 🔥 Risk Level
+    # Risk level
     if risk_score < 30:
         risk_level = "Low"
     elif risk_score < 70:
-        risk_level = "Medium."
+        risk_level = "Medium"
     else:
         risk_level = "High"
 
-    # ✅ FINAL RESPONSE
-    return {
+    # ✅ FINAL RESPONSE (frontend-friendly)
+    result = {
         "status": final_status,
-        "model_status": status,
         "confidence": round(confidence, 2),
-        "trend_alert": alert,
-        "risk_score": risk_score,
         "risk_level": risk_level,
-        "history_count": len(history)
+        "trend_alert": alert,
+        "location": f"{data.latitude},{data.longitude}"
     }
+
+    # 🔥 STORE LATEST DATA
+    latest_data = result
+
+    return result
+
+
+# 🔥 NEW ENDPOINT FOR FRONTEND
+@app.get("/latest")
+def get_latest():
+    return latest_data if latest_data else {"status": None}

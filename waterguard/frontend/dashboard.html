@@ -1,63 +1,444 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>WaterGuard Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#060d14;--surface:#0b1622;--surface2:#111e2e;--border:#1c2d40;
+    --accent:#00d4ff;--accent2:#0095b3;--safe:#00e676;--warn:#ffb300;--danger:#ff3d57;
+    --text:#e8f4ff;--muted:#6b8ba4;--label:#3a5a78;
+    --font-head:'Space Mono',monospace;--font-body:'DM Sans',sans-serif;
+  }
+  body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;overflow-x:hidden}
+  
+  /* scanline effect */
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,0.012) 2px,rgba(0,212,255,0.012) 4px);pointer-events:none;z-index:100}
 
-    <!-- 🔥 Leaflet Map CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  /* TOPBAR */
+  .topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 28px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo-icon{width:32px;height:32px;border:1.5px solid var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative}
+  .logo-icon::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+  .logo-text{font-family:var(--font-head);font-size:13px;letter-spacing:2px;color:var(--accent);text-transform:uppercase}
+  .logo-sub{font-size:10px;color:var(--muted);letter-spacing:1px}
+  .topbar-right{display:flex;align-items:center;gap:20px}
+  .live-badge{display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--font-head);color:var(--safe);letter-spacing:1px}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--safe);box-shadow:0 0 8px var(--safe);animation:blink 1.4s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  .role-tag{font-size:11px;font-family:var(--font-head);color:var(--muted);letter-spacing:1px;padding:4px 10px;border:1px solid var(--border);border-radius:4px}
+  .back-btn{font-size:11px;font-family:var(--font-head);color:var(--muted);letter-spacing:1px;padding:5px 12px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent;transition:.2s}
+  .back-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* LAYOUT */
+  .container{padding:24px 28px;max-width:1280px;margin:auto}
+  
+  /* STATUS BAND */
+  .status-band{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;position:relative;overflow:hidden}
+  .status-band::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--safe-color,var(--safe))}
+  .status-left{display:flex;flex-direction:column;gap:4px}
+  .status-label{font-size:10px;font-family:var(--font-head);color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+  .status-value{font-size:32px;font-family:var(--font-head);font-weight:700;color:var(--safe-color,var(--safe));text-shadow:0 0 20px var(--safe-color,var(--safe))}
+  .status-location{font-size:12px;color:var(--muted);margin-top:4px}
+  .status-right{display:flex;gap:16px;align-items:center}
+  .stat-pill{display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 20px;background:var(--bg);border:1px solid var(--border);border-radius:8px}
+  .stat-pill-label{font-size:10px;font-family:var(--font-head);color:var(--muted);letter-spacing:1px}
+  .stat-pill-val{font-size:18px;font-family:var(--font-head);font-weight:700;color:var(--text)}
+  .alert-ticker{font-size:11px;color:var(--warn);font-family:var(--font-head);margin-top:8px;letter-spacing:.5px}
+
+  /* SENSOR GRID */
+  .sensor-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+  .sensor-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;position:relative;overflow:hidden;transition:.25s}
+  .sensor-card:hover{border-color:var(--accent2);background:var(--surface2)}
+  .sensor-card::after{content:'';position:absolute;top:0;right:0;width:40px;height:40px;border-bottom-left-radius:40px;background:rgba(0,212,255,0.04)}
+  .sensor-icon{font-size:16px;width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;border:1px solid var(--border)}
+  .sensor-name{font-size:10px;font-family:var(--font-head);color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+  .sensor-val{font-size:28px;font-family:var(--font-head);font-weight:700;color:var(--text)}
+  .sensor-unit{font-size:11px;color:var(--muted);margin-top:2px}
+  .sensor-bar{height:3px;background:var(--border);border-radius:2px;margin-top:12px;overflow:hidden}
+  .sensor-bar-fill{height:100%;border-radius:2px;transition:.5s}
+
+  /* CHARTS SECTION */
+  .charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px}
+  .chart-card:hover{border-color:var(--accent2)}
+  .chart-title{font-size:10px;font-family:var(--font-head);color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+  .chart-current{font-size:20px;font-family:var(--font-head);color:var(--text);margin-bottom:14px}
+  .chart-current span{font-size:12px;color:var(--muted);margin-left:4px}
+  .chart-wrap{position:relative;height:120px}
+
+  /* BOTTOM ROW */
+  .bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .map-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px}
+  .history-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;display:none}
+  .card-title{font-size:10px;font-family:var(--font-head);color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+  #map{width:100%;height:260px;border-radius:7px;border:1px solid var(--border);overflow:hidden}
+  #alertHistory{list-style:none;display:flex;flex-direction:column;gap:8px}
+  #alertHistory li{font-size:12px;color:var(--warn);font-family:var(--font-head);padding:8px 12px;background:rgba(255,179,0,0.06);border:1px solid rgba(255,179,0,0.15);border-radius:6px;letter-spacing:.3px}
+
+  /* TOAST */
+  #toastContainer{position:fixed;top:18px;right:18px;z-index:999;display:flex;flex-direction:column;gap:8px}
+  .toast{background:var(--surface2);color:var(--text);padding:10px 16px;border-radius:7px;font-size:12px;font-family:var(--font-head);letter-spacing:.5px;min-width:200px;border:1px solid var(--border);animation:slideIn .3s ease}
+  .toast.safe{border-left:3px solid var(--safe);color:var(--safe)}
+  .toast.warning{border-left:3px solid var(--warn);color:var(--warn)}
+  .toast.danger{border-left:3px solid var(--danger);color:var(--danger)}
+  @keyframes slideIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+  /* SECTION DIVIDER */
+  .section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .section-header h2{font-size:10px;font-family:var(--font-head);color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+  .section-line{flex:1;height:1px;background:var(--border)}
+
+  @media(max-width:900px){.sensor-grid{grid-template-columns:1fr 1fr}.charts-row{grid-template-columns:1fr}.bottom-row{grid-template-columns:1fr}}
+  @media(max-width:500px){.sensor-grid{grid-template-columns:1fr}.status-right{flex-direction:column;gap:8px}}
+</style>
 </head>
-
 <body>
 
-<h1 style="text-align:center;">💧 Live Water Dashboard</h1>
+<div id="toastContainer"></div>
 
-<!-- 🔥 ROLE DISPLAY -->
-<h3 id="roleDisplay" style="text-align:center; margin-bottom:10px;"></h3>
-
-<div class="dashboard">
-
-    <div class="card">
-
-        <div class="status-section">
-            <h2 id="status">Loading...</h2>
-            <div class="pulse" id="pulse"></div>
-        </div>
-
-        <p id="location">📍 --</p>
-
-        <div class="grid">
-            <div class="box">
-                <p>Confidence</p>
-                <h3 id="confidence">--</h3>
-            </div>
-
-            <div class="box">
-                <p>Risk</p>
-                <h3 id="risk">--</h3>
-            </div>
-        </div>
-
-        <p id="alert">Alert: --</p>
-
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon"></div>
+    <div>
+      <div class="logo-text">AquaWatch</div>
+      <div class="logo-sub">WATER QUALITY MONITORING</div>
     </div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE FEED</div>
+    <div class="role-tag" id="roleDisplay">ROLE: USER</div>
+    <button class="back-btn" onclick="goBack()">← EXIT</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- STATUS BAND -->
+  <div class="status-band" id="statusBand">
+    <div class="status-left">
+      <div class="status-label">System Status</div>
+      <div class="status-value" id="status">— CONNECTING</div>
+      <div class="status-location" id="location">Awaiting location data...</div>
+      <div class="alert-ticker" id="alert"></div>
+    </div>
+    <div class="status-right">
+      <div class="stat-pill">
+        <div class="stat-pill-label">CONFIDENCE</div>
+        <div class="stat-pill-val" id="confidence">—</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-label">RISK LEVEL</div>
+        <div class="stat-pill-val" id="risk">—</div>
+      </div>
+      <div id="pulse" style="width:12px;height:12px;border-radius:50%;background:var(--safe);box-shadow:0 0 10px var(--safe);animation:blink 1.4s infinite"></div>
+    </div>
+  </div>
+
+  <!-- SENSORS -->
+  <div class="section-header"><div class="section-line"></div><h2>Sensor Readings</h2><div class="section-line"></div></div>
+  <div class="sensor-grid">
+    <div class="sensor-card">
+      <div class="sensor-icon" style="background:rgba(0,212,255,0.08);border-color:rgba(0,212,255,0.2)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+      <div class="sensor-name">pH Level</div>
+      <div class="sensor-val" id="phValue">—</div>
+      <div class="sensor-unit">Safe range: 6.5 – 8.5</div>
+      <div class="sensor-bar"><div class="sensor-bar-fill" id="phBar" style="width:50%;background:#00d4ff"></div></div>
+    </div>
+    <div class="sensor-card">
+      <div class="sensor-icon" style="background:rgba(0,230,118,0.08);border-color:rgba(0,230,118,0.2)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00e676" stroke-width="2"><path d="M12 2C12 2 4 10 4 15a8 8 0 0016 0c0-5-8-13-8-13z"/></svg>
+      </div>
+      <div class="sensor-name">Turbidity</div>
+      <div class="sensor-val" id="turbidityValue">—</div>
+      <div class="sensor-unit">NTU · Limit: 5</div>
+      <div class="sensor-bar"><div class="sensor-bar-fill" id="turbBar" style="width:20%;background:#00e676"></div></div>
+    </div>
+    <div class="sensor-card">
+      <div class="sensor-icon" style="background:rgba(255,179,0,0.08);border-color:rgba(255,179,0,0.2)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffb300" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+      </div>
+      <div class="sensor-name">TDS</div>
+      <div class="sensor-val" id="tds">—</div>
+      <div class="sensor-unit">Parts per million</div>
+      <div class="sensor-bar"><div class="sensor-bar-fill" id="tdsBar" style="width:30%;background:#ffb300"></div></div>
+    </div>
+    <div class="sensor-card">
+      <div class="sensor-icon" style="background:rgba(255,61,87,0.08);border-color:rgba(255,61,87,0.2)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff3d57" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+      </div>
+      <div class="sensor-name">Temperature</div>
+      <div class="sensor-val" id="temp">—</div>
+      <div class="sensor-unit">Degrees Celsius</div>
+      <div class="sensor-bar"><div class="sensor-bar-fill" id="tempBar" style="width:40%;background:#ff3d57"></div></div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="section-header"><div class="section-line"></div><h2>Time Series</h2><div class="section-line"></div></div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">pH Trend</div>
+      <div class="chart-current"><span id="phCurrent">—</span><span>pH</span></div>
+      <div class="chart-wrap"><canvas id="phChart" role="img" aria-label="pH trend line chart over time"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Turbidity Trend</div>
+      <div class="chart-current"><span id="turbCurrent">—</span><span>NTU</span></div>
+      <div class="chart-wrap"><canvas id="turbidityChart" role="img" aria-label="Turbidity trend line chart over time"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">TDS Trend</div>
+      <div class="chart-current"><span id="tdsCurrent">—</span><span>ppm</span></div>
+      <div class="chart-wrap"><canvas id="tdsChart" role="img" aria-label="TDS trend line chart over time"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="section-header"><div class="section-line"></div><h2>Location & Alerts</h2><div class="section-line"></div></div>
+  <div class="bottom-row">
+    <div class="map-card">
+      <div class="card-title">Sensor Location</div>
+      <div id="map"></div>
+    </div>
+    <div class="history-card" id="historyCard">
+      <div class="card-title">Alert History</div>
+      <ul id="alertHistory"></ul>
+    </div>
+    <div class="map-card" id="placeholderCard">
+      <div class="card-title">System Info</div>
+      <div style="display:grid;gap:10px;margin-top:4px">
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--muted);font-family:var(--font-head);letter-spacing:1px">REFRESH RATE</span>
+          <span style="font-size:12px;font-family:var(--font-head)">3s</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--muted);font-family:var(--font-head);letter-spacing:1px">DATA POINTS</span>
+          <span style="font-size:12px;font-family:var(--font-head)" id="dataCount">0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--muted);font-family:var(--font-head);letter-spacing:1px">ENDPOINT</span>
+          <span style="font-size:12px;font-family:var(--font-head);color:var(--muted)">localhost:8000</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0">
+          <span style="font-size:12px;color:var(--muted);font-family:var(--font-head);letter-spacing:1px">LAST UPDATE</span>
+          <span style="font-size:12px;font-family:var(--font-head)" id="lastUpdate">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
 </div>
 
-<!-- 🔥 ALERT HISTORY (NEW) -->
-<div class="card" id="historyCard" style="margin: 20px; display: none;">
-    <h3>📜 Alert History</h3>
-    <ul id="alertHistory" style="margin-top:10px;"></ul>
-</div>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+  let role = localStorage.getItem("role") || "user";
+  let alertHistory = [];
+  let lastStatus = "";
+  let map, marker;
+  let dataCount = 0;
+  let timeLabels = [], phData = [], turbidityData = [], tdsData = [];
+  let phChart, turbChart, tdsChart;
 
-<!-- 🔥 MAP SECTION -->
-<div id="map" style="height: 400px; margin: 20px;"></div>
+  function getColor(s) { return s==="Safe"?"#00e676":s==="Warning"?"#ffb300":"#ff3d57"; }
 
-<!-- 🔥 Leaflet Map JS -->
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  function showToast(msg, type="safe") {
+    const c = document.getElementById("toastContainer");
+    const t = document.createElement("div");
+    t.className = "toast " + type;
+    t.innerText = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
 
-<!-- Existing Script -->
-<script src="script.js"></script>
+  function initMap(lat=12.9716, lng=77.5946, status="Safe") {
+    const color = getColor(status);
+    if (!map) {
+      map = L.map("map", {zoomControl:false}).setView([lat,lng], 13);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { attribution:'© OSM © CARTO' }).addTo(map);
+      L.control.zoom({position:"bottomright"}).addTo(map);
+    } else {
+      map.setView([lat,lng], 13);
+      if (marker) map.removeLayer(marker);
+    }
+    marker = L.circleMarker([lat,lng], { radius:10, color, fillColor:color, fillOpacity:0.9, weight:2 }).addTo(map);
+  }
 
+  function makeChart(id, label, color, refVals) {
+    const ctx = document.getElementById(id);
+    return new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: timeLabels,
+        datasets: [
+          { label, data: [], borderColor: color, borderWidth: 2, pointRadius: 3, pointBackgroundColor: color, tension: 0.4, fill: true, backgroundColor: color.replace(")", ", 0.07)").replace("rgb", "rgba") },
+          ...refVals.map(r => ({ label: r.label, data: [], borderColor: "rgba(255,255,255,0.15)", borderWidth: 1, borderDash: [4,4], pointRadius: 0, tension: 0 }))
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "#3a5a78", font: { family: "Space Mono", size: 9 }, maxTicksLimit: 5 }, grid: { color: "#1c2d40" } },
+          y: { ticks: { color: "#3a5a78", font: { family: "Space Mono", size: 9 } }, grid: { color: "#1c2d40" } }
+        },
+        animation: { duration: 600 }
+      }
+    });
+  }
+
+  function createCharts() {
+    phChart = makeChart("phChart", "pH", "#00d4ff", [{label:"Min Safe"},{label:"Max Safe"}]);
+    turbChart = makeChart("turbidityChart", "Turbidity", "#00e676", [{label:"Safe Limit"}]);
+    tdsChart = makeChart("tdsChart", "TDS", "#ffb300", [{label:"Safe Limit"}]);
+  }
+
+  function updateBar(id, pct, color) {
+    const el = document.getElementById(id);
+    if (el) { el.style.width = Math.min(100,Math.max(0,pct))+"%; el.style.background = color"; el.style.width = Math.min(100,Math.max(0,pct))+"%"; el.style.background = color; }
+  }
+
+  function updateStatus(status) {
+    const color = getColor(status);
+    const band = document.getElementById("statusBand");
+    const el = document.getElementById("status");
+    const pulse = document.getElementById("pulse");
+    const icon = status==="Safe"?"● SAFE":status==="Warning"?"▲ WARNING":"■ DANGER";
+    if (el) { el.innerText = icon; el.style.color = color; el.style.textShadow = `0 0 20px ${color}`; }
+    if (band) band.style.setProperty("--safe-color", color);
+    if (pulse) { pulse.style.background = color; pulse.style.boxShadow = `0 0 10px ${color}`; }
+  }
+
+  async function fetchData() {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/latest");
+      const data = await res.json();
+      if (!data || !data.status) return;
+
+      dataCount++;
+      document.getElementById("dataCount").innerText = dataCount;
+      document.getElementById("lastUpdate").innerText = new Date().toLocaleTimeString();
+
+      updateStatus(data.status);
+
+      if (data.confidence !== undefined) document.getElementById("confidence").innerText = data.confidence + "%";
+      if (data.risk_level) document.getElementById("risk").innerText = data.risk_level;
+
+      const ph = data.ph ?? 0;
+      const turb = data.turbidity ?? 0;
+      const tds = data.tds ?? 0;
+      const temp = data.temperature ?? 0;
+
+      document.getElementById("phValue").innerText = ph.toFixed(2);
+      document.getElementById("turbidityValue").innerText = turb.toFixed(1);
+      const tdsLabel = tds < 150 ? "Good" : tds < 300 ? "OK" : "High";
+      document.getElementById("tds").innerText = tds + " (" + tdsLabel + ")";
+      document.getElementById("temp").innerText = temp.toFixed(1) + "°C";
+      document.getElementById("phCurrent").innerText = ph.toFixed(2);
+      document.getElementById("turbCurrent").innerText = turb.toFixed(1);
+      document.getElementById("tdsCurrent").innerText = tds;
+
+      // bars
+      updateBar("phBar", (ph/14)*100, "#00d4ff");
+      updateBar("turbBar", (turb/100)*100, turb > 5 ? "#ff3d57" : "#00e676");
+      updateBar("tdsBar", (tds/1000)*100, tds > 300 ? "#ffb300" : "#00e676");
+      updateBar("tempBar", (temp/50)*100, "#ff3d57");
+
+      // alert
+      const reasons = [];
+      if (turb > 70) reasons.push("HIGH TURBIDITY");
+      if (tds > 500) reasons.push("EXCESS SOLIDS");
+      if (ph < 6 || ph > 8) reasons.push("pH ANOMALY");
+      const alertEl = document.getElementById("alert");
+      if (alertEl) {
+        if (reasons.length > 0) alertEl.innerText = "⚠ ALERT: " + reasons.join(" · ");
+        else if (data.trend_alert && data.trend_alert !== "Normal") alertEl.innerText = "⚠ " + data.trend_alert;
+        else alertEl.innerText = "";
+      }
+
+      if (data.status !== lastStatus) {
+        if (data.status === "Danger") showToast("DANGER: Water Unsafe", "danger");
+        else if (data.status === "Warning") showToast("WARNING: Check Values", "warning");
+        else showToast("SAFE: All Clear", "safe");
+        lastStatus = data.status;
+      }
+
+      if (data.location) {
+        const locEl = document.getElementById("location");
+        if (locEl) locEl.innerText = "📍 " + data.location;
+        const [lat, lng] = data.location.split(",").map(Number);
+        if (!isNaN(lat) && !isNaN(lng)) initMap(lat, lng, data.status);
+      }
+
+      const now = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});
+      timeLabels.push(now);
+      phData.push(ph);
+      turbidityData.push(turb);
+      tdsData.push(tds);
+      if (timeLabels.length > 12) { timeLabels.shift(); phData.shift(); turbidityData.shift(); tdsData.shift(); }
+
+      phChart.data.labels = [...timeLabels];
+      phChart.data.datasets[0].data = [...phData];
+      phChart.data.datasets[1].data = timeLabels.map(() => 6.5);
+      phChart.data.datasets[2].data = timeLabels.map(() => 8.5);
+
+      turbChart.data.labels = [...timeLabels];
+      turbChart.data.datasets[0].data = [...turbidityData];
+      turbChart.data.datasets[1].data = timeLabels.map(() => 5);
+
+      tdsChart.data.labels = [...timeLabels];
+      tdsChart.data.datasets[0].data = [...tdsData];
+      tdsChart.data.datasets[1].data = timeLabels.map(() => 300);
+
+      const c = getColor(data.status);
+      phChart.data.datasets[0].borderColor = c;
+      turbChart.data.datasets[0].borderColor = c;
+      tdsChart.data.datasets[0].borderColor = c;
+
+      phChart.update("none");
+      turbChart.update("none");
+      tdsChart.update("none");
+
+      if (data.trend_alert && data.trend_alert !== "Normal") {
+        if (alertHistory.length === 0 || alertHistory[0] !== data.trend_alert) {
+          alertHistory.unshift(data.trend_alert);
+          if (alertHistory.length > 5) alertHistory.pop();
+        }
+      }
+
+      if (role === "authority") {
+        const hc = document.getElementById("historyCard");
+        const pc = document.getElementById("placeholderCard");
+        if (hc) hc.style.display = "block";
+        if (pc) pc.style.display = "none";
+        const hl = document.getElementById("alertHistory");
+        if (hl) {
+          hl.innerHTML = alertHistory.length === 0
+            ? "<li style='color:var(--muted)'>No alerts recorded</li>"
+            : alertHistory.map(a => `<li>${a}</li>`).join("");
+        }
+      }
+    } catch (err) {
+      document.getElementById("status").innerText = "× NO SIGNAL";
+      document.getElementById("status").style.color = "#3a5a78";
+    }
+  }
+
+  function goBack() { window.location.href = "index.html"; }
+
+  window.onload = function() {
+    const roleEl = document.getElementById("roleDisplay");
+    if (roleEl) roleEl.innerText = "ROLE: " + role.toUpperCase();
+    initMap();
+    createCharts();
+    fetchData();
+    setInterval(fetchData, 3000);
+  };
+</script>
 </body>
 </html>

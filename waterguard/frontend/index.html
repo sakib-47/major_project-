@@ -2,37 +2,477 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>WaterGuard</title>
-    <link rel="stylesheet" href="style.css">
-</head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaWatch — Water Quality Monitoring</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        :root {
+            --bg: #060d14;
+            --surface: #0b1622;
+            --surface2: #111e2e;
+            --border: #1c2d40;
+            --accent: #00d4ff;
+            --accent2: #0095b3;
+            --safe: #00e676;
+            --muted: #6b8ba4;
+            --label: #3a5a78;
+            --text: #e8f4ff;
+            --font-head: 'Space Mono', monospace;
+            --font-body: 'DM Sans', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* CRT scanline overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 212, 255, 0.012) 2px,
+                rgba(0, 212, 255, 0.012) 4px
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ===== TOPBAR ===== */
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 28px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo { display: flex; align-items: center; gap: 10px; }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            border: 1.5px solid var(--accent);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .logo-icon::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent);
+        }
+
+        .logo-text {
+            font-family: var(--font-head);
+            font-size: 13px;
+            letter-spacing: 2px;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .logo-sub {
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 1px;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-family: var(--font-head);
+            color: var(--safe);
+            letter-spacing: 1px;
+        }
+
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--safe);
+            box-shadow: 0 0 8px var(--safe);
+            animation: blink 1.4s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ===== MAIN ===== */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 52px 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ===== EYEBROW ===== */
+        .eyebrow {
+            font-family: var(--font-head);
+            font-size: 10px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .eyebrow::before,
+        .eyebrow::after {
+            content: '';
+            width: 24px;
+            height: 1px;
+            background: var(--accent);
+        }
+
+        /* ===== HERO TEXT ===== */
+        .hero-title {
+            font-family: var(--font-head);
+            font-size: clamp(28px, 5vw, 52px);
+            font-weight: 700;
+            color: var(--text);
+            text-align: center;
+            line-height: 1.15;
+            max-width: 680px;
+            margin-bottom: 14px;
+            letter-spacing: -1px;
+        }
+
+        .hero-title span { color: var(--accent); }
+
+        .hero-sub {
+            font-size: 15px;
+            color: var(--muted);
+            text-align: center;
+            max-width: 440px;
+            line-height: 1.7;
+            margin-bottom: 40px;
+        }
+
+        /* ===== FEATURE STRIP ===== */
+        .feature-strip {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 44px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .feat {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 14px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 11px;
+            font-family: var(--font-head);
+            color: var(--muted);
+            letter-spacing: 0.5px;
+        }
+
+        .feat-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        /* ===== LOGIN CARD ===== */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .card-label {
+            font-size: 10px;
+            font-family: var(--font-head);
+            color: var(--muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* ===== ROLE SELECTOR ===== */
+        .role-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .role-btn {
+            padding: 14px 12px;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            background: transparent;
+            cursor: pointer;
+            font-family: var(--font-head);
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: var(--muted);
+            text-transform: uppercase;
+            transition: 0.2s;
+            text-align: center;
+        }
+
+        .role-btn:hover {
+            border-color: var(--accent2);
+            color: var(--text);
+        }
+
+        .role-btn.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(0, 212, 255, 0.07);
+        }
+
+        .role-icon {
+            display: block;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* ===== ENTER BUTTON ===== */
+        .enter-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            background: var(--accent);
+            border: none;
+            cursor: pointer;
+            font-family: var(--font-head);
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: #060d14;
+            font-weight: 700;
+            text-transform: uppercase;
+            transition: 0.2s;
+        }
+
+        .enter-btn:hover { opacity: 0.88; }
+        .enter-btn:active { transform: scale(0.98); }
+
+        .role-desc {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 14px;
+            font-family: var(--font-head);
+            letter-spacing: 0.5px;
+            min-height: 14px;
+        }
+
+        /* ===== STATS ROW ===== */
+        .stats-row {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-top: 44px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stat-num {
+            font-family: var(--font-head);
+            font-size: 22px;
+            color: var(--accent);
+            letter-spacing: -1px;
+        }
+
+        .stat-lbl {
+            font-size: 10px;
+            color: var(--label);
+            letter-spacing: 1px;
+            font-family: var(--font-head);
+        }
+
+        .stat-div {
+            width: 1px;
+            background: var(--border);
+            align-self: stretch;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            text-align: center;
+            padding: 14px;
+            border-top: 1px solid var(--border);
+            font-size: 10px;
+            color: var(--label);
+            font-family: var(--font-head);
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ===== MOBILE ===== */
+        @media (max-width: 500px) {
+            .hero-title { font-size: 26px; }
+            .topbar { padding: 12px 16px; }
+            .card { padding: 24px 18px; }
+            .stats-row { gap: 16px; }
+        }
+    </style>
+</head>
 <body>
 
-<!-- 🌊 HERO SECTION -->
-<div class="hero">
+    <div class="topbar">
+        <div class="logo">
+            <div class="logo-icon"></div>
+            <div>
+                <div class="logo-text">AquaWatch</div>
+                <div class="logo-sub">WATER QUALITY MONITORING</div>
+            </div>
+        </div>
+        <div class="live-badge">
+            <div class="live-dot"></div>
+            SYSTEM ONLINE
+        </div>
+    </div>
 
-    <h1>💧 WaterGuard</h1>
+    <div class="main">
+        <div class="eyebrow">IoT + AI Powered</div>
 
-    <h2 class="project-title">
-        Smart Water Quality Monitoring Using IoT & AI
-    </h2>
+        <h1 class="hero-title">
+            Smart <span>Water Quality</span><br>Monitoring System
+        </h1>
 
-    <p class="tagline">
-        Real-time detection, intelligent prediction, and location-based monitoring
-    </p>
+        <p class="hero-sub">
+            Real-time detection, intelligent prediction, and location-based water safety monitoring across your network.
+        </p>
 
-    <!-- 🔥 ROLE SELECTOR (NEW) -->
-    <select id="role" style="margin-top:15px; padding:10px; border-radius:10px;">
-        <option value="user">Normal User</option>
-        <option value="authority">Authority</option>
-    </select>
+        <div class="feature-strip">
+            <div class="feat"><div class="feat-dot"></div>Live Sensor Feed</div>
+            <div class="feat"><div class="feat-dot"></div>AI Risk Analysis</div>
+            <div class="feat"><div class="feat-dot"></div>pH · Turbidity · TDS</div>
+            <div class="feat"><div class="feat-dot"></div>Location Mapping</div>
+            <div class="feat"><div class="feat-dot"></div>Instant Alerts</div>
+        </div>
 
-    <!-- 🔹 BUTTON -->
-    <button onclick="goToDashboard()">View Live Dashboard</button>
+        <div class="card">
+            <div class="card-label">Select Access Mode</div>
 
-</div>
+            <div class="role-row">
+                <button class="role-btn active" id="btnUser" onclick="selectRole('user')">
+                    <span class="role-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="8" r="4"/>
+                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                        </svg>
+                    </span>
+                    Normal User
+                </button>
+                <button class="role-btn" id="btnAuth" onclick="selectRole('authority')">
+                    <span class="role-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z"/>
+                        </svg>
+                    </span>
+                    Authority
+                </button>
+            </div>
 
-<script src="script.js"></script>
+            <!-- Hidden input keeps script.js compatibility -->
+            <input type="hidden" id="role" value="user">
+
+            <button class="enter-btn" onclick="goToDashboard()">
+                ENTER DASHBOARD →
+            </button>
+
+            <div class="role-desc" id="roleDesc">
+                Public monitoring — view water safety status
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat">
+                <div class="stat-num">3s</div>
+                <div class="stat-lbl">Refresh Rate</div>
+            </div>
+            <div class="stat-div"></div>
+            <div class="stat">
+                <div class="stat-num">4</div>
+                <div class="stat-lbl">Sensors</div>
+            </div>
+            <div class="stat-div"></div>
+            <div class="stat">
+                <div class="stat-num">AI</div>
+                <div class="stat-lbl">Risk Engine</div>
+            </div>
+            <div class="stat-div"></div>
+            <div class="stat">
+                <div class="stat-num">24/7</div>
+                <div class="stat-lbl">Monitoring</div>
+            </div>
+        </div>
+    </div>
+
+    <footer>AQUAWATCH v1.0 · WATER QUALITY INTELLIGENCE PLATFORM</footer>
+
+    <script>
+        let selectedRole = 'user';
+
+        const descs = {
+            user: 'Public monitoring — view water safety status',
+            authority: 'Admin access — full alerts, history & controls'
+        };
+
+        function selectRole(r) {
+            selectedRole = r;
+            document.getElementById('btnUser').classList.toggle('active', r === 'user');
+            document.getElementById('btnAuth').classList.toggle('active', r === 'authority');
+            document.getElementById('roleDesc').innerText = descs[r];
+            document.getElementById('role').value = r;
+        }
+
+        function goToDashboard() {
+            localStorage.setItem('role', selectedRole);
+            window.location.href = 'dashboard.html';
+        }
+    </script>
 
 </body>
 </html>
